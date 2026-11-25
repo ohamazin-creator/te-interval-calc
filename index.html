@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T&amp;E Interval Calculator</title>
+<style>
+  :root {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --line: #d1d5db;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --ok: #15803d;
+    --err: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111827;
+      --card: #1f2937;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --line: #374151;
+      --accent: #60a5fa;
+      --accent-soft: #1e3a5f;
+      --ok: #4ade80;
+      --err: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", system-ui, sans-serif;
+    font-size: 15px;
+  }
+  .wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 12px 16px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  h1 { font-size: 16px; margin: 0; }
+  h1 small { color: var(--muted); font-weight: normal; font-size: 12px; }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+  }
+  .row label {
+    flex: 0 0 64px;
+    font-weight: bold;
+  }
+  input[type=text] {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px;
+    font: inherit;
+    color: var(--text);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+  }
+  input[type=text]:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  #le2 { background: var(--accent-soft); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin: 10px 0;
+  }
+  button {
+    font: inherit;
+    padding: 8px 0;
+    border: 1px solid var(--accent);
+    background: var(--card);
+    color: var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  button:hover { background: var(--accent-soft); }
+  button.on { background: var(--accent); color: var(--card); }
+  .etc {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+  }
+  .etc input { width: 100%; text-align: center; padding: 8px 4px; }
+  #msg { min-height: 20px; font-size: 13px; margin-top: 6px; }
+  #msg.ok { color: var(--ok); }
+  #msg.err { color: var(--err); }
+  .small-btn {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-color: var(--line);
+    color: var(--muted);
+  }
+  .help { color: var(--muted); font-size: 12px; line-height: 1.6; margin-top: 10px; }
+  .help code { background: var(--accent-soft); padding: 0 4px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>T&amp;E Interval Calculator <small>주차계산기 <span id="ver"></span></small></h1>
+    <button class="small-btn" id="popup" title="EMR 옆에 띄워두기 좋은 작은 창으로 엽니다">작은 창으로 열기</button>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <label for="le1">이전치료</label>
+      <input type="text" id="le1" autocomplete="off"
+             placeholder="예) 26.09.22 (Left eye 4주차)#2, (Right eye 4주차)#2">
+    </div>
+
+    <div class="grid" id="grid">
+      <!-- 4~20주 버튼은 아래 스크립트가 만듭니다 -->
+      <div class="etc">
+        <span>기타</span>
+        <input type="text" id="etc" inputmode="numeric" maxlength="3" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="row">
+      <label for="le2">다음치료</label>
+      <input type="text" id="le2" autocomplete="off">
+    </div>
+    <div id="msg"></div>
+  </div>
+
+  <div class="help">
+    이전치료 칸에 붙여넣고 주수 버튼을 누르면 결과가 <b>자동으로 복사</b>됩니다.<br>
+    날짜는 <code>26.09.22</code> <code>2026.9.22</code> <code>26-09-22</code> <code>26/9/22</code> 모두 됩니다.<br>
+    <code>#2</code> → <code>#3</code> (횟수 +1), <code>4주차</code> <code>W4</code> <code>4wks</code> → 누른 주수로 바뀝니다.<br>
+    입력한 내용은 이 컴퓨터의 브라우저 안에서만 계산되며 어디로도 전송되지 않습니다.
+  </div>
+</div>
+
+<script>
+// ==LOGIC START==  (myfunc.py 를 자바스크립트로 옮긴 부분)
+
+// 숫자(0~9)와 구분자('.', '/', '-')가 아닌 글자를 처음 만나면
+// 그 앞(날짜 부분)과 뒤(메모 부분)로 나눠서 돌려준다. 없으면 null.
+function seperateDate(txt) {
+  const sp = ['.', '/', '-'];
+  for (let i = 0; i < txt.length; i++) {
+    const c = txt[i];
+    const isDigit = c >= '0' && c <= '9';
+    if (isDigit || sp.includes(c)) continue;
+    return [txt.slice(0, i), txt.slice(i)];
+  }
+  return null;
+}
+
+// '2026.10.01', '26-01.23', '26.1.23' → [년, 월, 일]  (못 읽으면 [0, 0, 0])
+function numberSeperate(pre) {
+  let dt = '';
+  let pd = ''; // 부분 날짜
+  for (const c of pre) {
+    if (c >= '0' && c <= '9') {
+      dt += c;
+      pd += c;
+    } else {
+      // 한 자리 숫자면 앞에 0을 붙인다
+      if (pd.length === 1) dt = dt.slice(0, -1) + '0' + dt.slice(-1);
+      pd = '';
+    }
+  }
+  // 마지막 일(day) 1자리 숫자 체크
+  if (pd.length === 1) dt = dt.slice(0, -1) + '0' + dt.slice(-1);
+
+  // 8자리 or 6자리 구분
+  if (dt.length === 8) {        // '20261001'
+    return [+dt.slice(0, 4), +dt.slice(4, 6), +dt.slice(6)];
+  } else if (dt.length === 6) { // '261001'
+    return [+dt.slice(0, 2) + 2000, +dt.slice(2, 4), +dt.slice(4)];
+  }
+  return [0, 0, 0];
+}
+
+// #숫자는 치료횟수이므로 +1, 주차 표현의 숫자는 id 로 변경
+function weekOrMonth(post, id) {
+  post = post.trim();
+  post = post.replace(/#(\d+)/g, (m, n) => '#' + (parseInt(n, 10) + 1));
+  // (?:wks|ws|w|W|주차|주째|주)\d+  -> ws12, W3, 주차12
+  // \d+(?:wks|ws|w|W|주차|주째|주)  -> 12wks, 3주, 12주차
+  const pattern = /(?:wks|ws|w|W|주차|주째|주)\d+|\d+(?:wks|ws|w|W|주차|주째|주)/g;
+  post = post.replace(pattern, (m) => m.replace(/\d+/g, String(id)));
+  return post;
+}
+
+// 날짜 + n주 → 'yy.MM.dd'
+function addWeeks(y, m, d, weeks) {
+  const fd = new Date(y, m - 1, d + weeks * 7); // 달/년 넘김 자동 처리
+  const two = (v) => String(v).padStart(2, '0');
+  return `${two(fd.getFullYear() % 100)}.${two(fd.getMonth() + 1)}.${two(fd.getDate())}`;
+}
+
+// 이전치료 문자열 + n주 → 다음치료 문자열 (못 읽으면 null)
+function nextTreatment(history, n) {
+  const parts = seperateDate(history);
+  if (!parts) return null;
+  const [pre, post] = parts;
+  const [y, m, d] = numberSeperate(pre);
+  if (y === 0 || m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return `${addWeeks(y, m, d, n)} ${weekOrMonth(post, n)}`;
+}
+
+// ==LOGIC END==
+
+// ---------- 화면 부분 (main.py 의 Window 클래스에 해당) ----------
+if (typeof document !== 'undefined') {
+  const VER = '1.1 (web)';
+  const WEEKS = [4, 6, 8, 10, 12, 14, 16, 18, 20];
+  const le1 = document.getElementById('le1');
+  const le2 = document.getElementById('le2');
+  const etc = document.getElementById('etc');
+  const grid = document.getElementById('grid');
+  const msg = document.getElementById('msg');
+  document.getElementById('ver').textContent = 'Ver.' + VER;
+
+  function show(text, kind) {
+    msg.textContent = text;
+    msg.className = kind || '';
+  }
+
+  async function copy(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (e) {
+      // 예전 방식 (일부 브라우저/환경용)
+      le2.select();
+      document.execCommand('copy');
+    }
+  }
+
+  function markButton(n) {
+    grid.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('on', Number(b.dataset.w) === n);
+    });
+  }
+
+  function run(n) {
+    if (!le1.value.trim()) {
+      le2.value = '';
+      show('이전치료 칸을 먼저 채워주세요.', 'err');
+      return;
+    }
+    const next = nextTreatment(le1.value, n);
+    if (!next) {
+      le2.value = '';
+      show('날짜를 읽을 수 없어요. 맨 앞에 26.09.22 처럼 날짜를 적어주세요.', 'err');
+      return;
+    }
+    le2.value = next;
+    copy(next);
+    show(`${n}주 뒤로 계산했어요. 클립보드에 복사됨 ✓`, 'ok');
+  }
+
+  // 4~20주 버튼 만들기 (기타 칸 앞에 끼워 넣음)
+  const etcBox = grid.querySelector('.etc');
+  WEEKS.forEach((w) => {
+    const b = document.createElement('button');
+    b.textContent = w + '주';
+    b.dataset.w = w;
+    b.addEventListener('click', () => {
+      etc.value = '';
+      markButton(w);
+      run(w);
+    });
+    grid.insertBefore(b, etcBox);
+  });
+
+  // 기타 칸: 숫자만, 바뀔 때마다 계산
+  etc.addEventListener('input', () => {
+    etc.value = etc.value.replace(/\D/g, '').slice(0, 3);
+    const n = parseInt(etc.value, 10) || 0;
+    markButton(-1);
+    if (n === 0) {
+      le2.value = '';
+      show('');
+      return;
+    }
+    run(n);
+  });
+
+  // 이전치료를 바꾸면 이전 결과는 지움
+  le1.addEventListener('input', () => {
+    le2.value = '';
+    markButton(-1);
+    show('');
+  });
+
+  // 작은 창으로 열기 (EMR 옆에 띄워두기용)
+  document.getElementById('popup').addEventListener('click', () => {
+    window.open(location.href, 'weekcalc', 'width=520,height=360');
+  });
+
+  le1.focus();
+}
+</script>
+</body>
+</html>
