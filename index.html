@@ -214,6 +214,8 @@ function addWeeks(y, m, d, weeks) {
 
 // 이전치료 문자열 + n주 → 다음치료 문자열 (못 읽으면 null)
 function nextTreatment(history, n) {
+  // 복사해 올 때 앞에 딸려 온 공백·탭·보이지 않는 글자 제거
+  history = history.replace(/^[\s​‌‍⁠﻿]+/, '');
   const parts = seperateDate(history);
   if (!parts) return null;
   const [pre, post] = parts;
@@ -226,7 +228,7 @@ function nextTreatment(history, n) {
 
 // ---------- 화면 부분 (main.py 의 Window 클래스에 해당) ----------
 if (typeof document !== 'undefined') {
-  const VER = '1.1 (web)';
+  const VER = '1.2 (web)';
   const WEEKS = [4, 6, 8, 10, 12, 14, 16, 18, 20];
   const le1 = document.getElementById('le1');
   const le2 = document.getElementById('le2');
