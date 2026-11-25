@@ -146,7 +146,7 @@
 
   <div class="help">
     이전치료 칸에 붙여넣고 주수 버튼을 누르면 결과가 <b>자동으로 복사</b>됩니다.<br>
-    날짜는 <code>26.09.22</code> <code>2026.9.22</code> <code>26-09-22</code> <code>26/9/22</code> 모두 됩니다.<br>
+    날짜는 <code>26.09.22</code> <code>2026.9.22</code> <code>26-09-22</code> <code>26/9/22</code> <code>260922</code> 모두 되고, 날짜만 넣어도 됩니다.<br>
     <code>#2</code> → <code>#3</code> (횟수 +1), <code>4주차</code> <code>W4</code> <code>4wks</code> → 누른 주수로 바뀝니다.<br>
     입력한 내용은 이 컴퓨터의 브라우저 안에서만 계산되며 어디로도 전송되지 않습니다.
   </div>
@@ -156,7 +156,8 @@
 // ==LOGIC START==  (myfunc.py 를 자바스크립트로 옮긴 부분)
 
 // 숫자(0~9)와 구분자('.', '/', '-')가 아닌 글자를 처음 만나면
-// 그 앞(날짜 부분)과 뒤(메모 부분)로 나눠서 돌려준다. 없으면 null.
+// 그 앞(날짜 부분)과 뒤(메모 부분)로 나눠서 돌려준다.
+// 그런 글자가 없으면(날짜만 입력) 전체가 날짜, 메모는 빈칸.
 function seperateDate(txt) {
   const sp = ['.', '/', '-'];
   for (let i = 0; i < txt.length; i++) {
@@ -165,7 +166,7 @@ function seperateDate(txt) {
     if (isDigit || sp.includes(c)) continue;
     return [txt.slice(0, i), txt.slice(i)];
   }
-  return null;
+  return [txt, ''];
 }
 
 // '2026.10.01', '26-01.23', '26.1.23' → [년, 월, 일]  (못 읽으면 [0, 0, 0])
@@ -215,20 +216,20 @@ function addWeeks(y, m, d, weeks) {
 // 이전치료 문자열 + n주 → 다음치료 문자열 (못 읽으면 null)
 function nextTreatment(history, n) {
   // 복사해 올 때 앞에 딸려 온 공백·탭·보이지 않는 글자 제거
-  history = history.replace(/^[\s​‌‍⁠﻿]+/, '');
+  history = history.replace(/^[\s\u200b\u200c\u200d\u2060\ufeff]+/, '');
   const parts = seperateDate(history);
   if (!parts) return null;
   const [pre, post] = parts;
   const [y, m, d] = numberSeperate(pre);
   if (y === 0 || m < 1 || m > 12 || d < 1 || d > 31) return null;
-  return `${addWeeks(y, m, d, n)} ${weekOrMonth(post, n)}`;
+  return `${addWeeks(y, m, d, n)} ${weekOrMonth(post, n)}`.trimEnd(); // 메모가 없으면 끝 공백 제거
 }
 
 // ==LOGIC END==
 
 // ---------- 화면 부분 (main.py 의 Window 클래스에 해당) ----------
 if (typeof document !== 'undefined') {
-  const VER = '1.2 (web)';
+  const VER = '1.3 (web)';
   const WEEKS = [4, 6, 8, 10, 12, 14, 16, 18, 20];
   const le1 = document.getElementById('le1');
   const le2 = document.getElementById('le2');
